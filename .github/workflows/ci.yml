@@ -31,17 +31,15 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.13"
-      - name: Install ffmpeg (the tests build small sample videos)
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
-      - name: Install dependencies
+      - name: Run the tests in a clean Python 3.13 container
         run: |
-          python -m pip install --require-hashes -r requirements.txt
-          python -m pip install -r requirements-dev.txt
-      - name: Run the tests
-        run: python -m pytest -q tests
+          docker run --rm -v "$PWD:/src:ro" -e PYTHONDONTWRITEBYTECODE=1 python:3.13-slim sh -ec '
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends ffmpeg   # the tests build small sample videos
+            cp -r /src /work && cd /work
+            python -m pip install -q --root-user-action=ignore --disable-pip-version-check --require-hashes -r requirements.txt
+            python -m pip install -q --root-user-action=ignore --disable-pip-version-check -r requirements-dev.txt
+            python -m pytest -q -p no:cacheprovider tests'
 
   dockerfile:
     name: Dockerfile lint
