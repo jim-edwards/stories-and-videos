@@ -103,6 +103,9 @@ jobs:
             type=semver,pattern={{major}},value=${{ needs.resolve.outputs.tag }},enable=${{ needs.resolve.outputs.newest == 'true' }}
             type=raw,value=latest,enable=${{ needs.resolve.outputs.newest == 'true' }}
           labels: |
+            org.opencontainers.image.title=Stories and Videos
+            org.opencontainers.image.description=A simple, large-print video library for family stories.
+            org.opencontainers.image.licenses=GPL-3.0-only
             org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
       - id: build
         name: Build for amd64 and arm64, and push
