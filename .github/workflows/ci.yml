@@ -35,10 +35,6 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
       - name: Install ffmpeg (the tests build small sample videos)
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Install dependencies
@@ -91,8 +87,6 @@ jobs:
           load: true
           provenance: false
           tags: stories-and-videos:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Smoke test
         run: scripts/smoke-test.sh stories-and-videos:ci docker
       - name: Scan the image for known vulnerabilities

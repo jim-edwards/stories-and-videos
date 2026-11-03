@@ -118,6 +118,13 @@ def test_active_sessions_slide_their_cookie_forward(client, db):
     assert r.status_code == 200 and "sv_session=" in r.headers.get("Set-Cookie", "")
 
 
+def test_a_forged_cookie_is_never_accepted_or_echoed_back(client):
+    for forged in ("not-a-real-token", "x; Path=/; Domain=evil.example", "a" * 500):
+        r = client.get("/", headers={"Cookie": f"sv_session={forged}"})
+        assert r.status_code == 302 and "/login" in r.headers["Location"]
+        assert forged not in r.headers.get("Set-Cookie", "")
+
+
 def test_only_admins_can_manage(mom_client):
     assert mom_client.get("/admin").status_code == 403
     token = csrf_of(mom_client)

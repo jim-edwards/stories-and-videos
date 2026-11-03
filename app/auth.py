@@ -118,6 +118,8 @@ def bootstrap_admin(conn: sqlite3.Connection, cfg, log) -> None:
         password = secrets.token_urlsafe(9)
     create_user(conn, cfg.admin_username, password, "Administrator", is_admin=True)
     if generated:
+        # Deliberate: the person installing this has to see the random one-time password somewhere.
+        # A password supplied through ADMIN_PASSWORD is never logged.
         log.warning("=" * 60)
         log.warning("First start: created the administrator account.")
         log.warning("   Name:     %s", cfg.admin_username)
