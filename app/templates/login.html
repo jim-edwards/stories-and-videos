@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Sign in – {{ site_name }}{% endblock %}
+{% block content %}
+<section class="login">
+  <h1>Welcome</h1>
+  <p class="lead">Please sign in to see your stories.</p>
+
+  {% if error %}<p class="alert alert-error" role="alert">{{ error }}</p>{% endif %}
+
+  <form method="post" action="{{ url_for('views.login') }}" class="form-big">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label for="username">Your name</label>
+    <input id="username" name="username" type="text" value="{{ username }}" required autofocus
+           autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+
+    <label for="password">Your password</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <label class="check-row"><input type="checkbox" data-show-password="password"> Show my password</label>
+
+    <button type="submit" class="btn btn-primary btn-huge">Sign in</button>
+  </form>
+</section>
+{% endblock %}

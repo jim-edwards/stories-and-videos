@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Manage – {{ site_name }}{% endblock %}
+{% block content %}
+<p class="back"><a class="btn btn-secondary" href="{{ url_for('views.home') }}"><span aria-hidden="true">←</span> Back to stories</a></p>
+<h1>Manage</h1>
+
+<section class="panel">
+  <h2>Videos</h2>
+  <p>
+    {{ totals.videos }} video{{ '' if totals.videos == 1 else 's' }} in {{ totals.stories }}
+    stor{{ 'y' if totals.stories == 1 else 'ies' }}, read from <code>{{ video_dir }}</code>.
+    The folder is checked for new videos about every {{ scan_interval_min }} minute{{ '' if scan_interval_min == 1 else 's' }}.
+  </p>
+  <p>
+    <strong>{{ totals.pictures }} of {{ totals.videos }}</strong> have a picture.
+    {% if totals.pictures < totals.videos %}<span class="muted">To add one, save a .jpg, .jpeg or .png next to the video with exactly the same name (<code>Apple Pie.mp4</code> and <code>Apple Pie.jpg</code>).</span>{% endif %}
+  </p>
+  <p>
+    Last checked: <strong>{% if scan.running %}checking now…{% else %}{{ scan_ago }}{% endif %}</strong>
+    {% if scan.waiting %}· {{ scan.waiting }} still being copied in{% endif %}
+    {% if scan.added or scan.updated or scan.moved %}· found {{ scan.added }} new, {{ scan.updated }} changed, {{ scan.moved }} moved{% endif %}
+  </p>
+  {% if scan.error %}<p class="alert alert-error">{{ scan.error }}</p>{% endif %}
+  {% if scan.unreadable %}
+    <details class="plain"><summary>{{ scan.unreadable|length }} file{{ '' if scan.unreadable|length == 1 else 's' }} could not be read as a video</summary>
+      <ul>{% for p in scan.unreadable %}<li><code>{{ p }}</code></li>{% endfor %}</ul>
+    </details>
+  {% endif %}
+  {% if missing %}<p class="muted">{{ missing }} earlier video{{ '' if missing == 1 else 's' }} can't be found in the folder right now, so they are hidden. Watch history is kept in case they come back.</p>{% endif %}
+  <form method="post" action="{{ url_for('admin.rescan') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-secondary">Check for new videos now</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>People</h2>
+  <ul class="people">
+    {% for u in users %}
+    <li>
+      <div class="person">
+        <strong>{{ u.display_name }}</strong>
+        <span class="muted">sign-in name: {{ u.username }}{% if u.is_admin %} · can manage{% endif %} · has seen {{ u.seen_count }} video{{ '' if u.seen_count == 1 else 's' }}</span>
+      </div>
+      <form method="post" action="{{ url_for('admin.reset_password', user_id=u.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="sr-only" for="pw-{{ u.id }}">New password for {{ u.display_name }}</label>
+        <input id="pw-{{ u.id }}" name="password" type="text" placeholder="New password" autocomplete="off" required minlength="8">
+        <button type="submit" class="btn btn-secondary btn-small">Change password</button>
+      </form>
+      {% if u.id != user.id %}
+      <form method="post" action="{{ url_for('admin.delete_user', user_id=u.id) }}" class="inline-form"
+            data-confirm="Remove {{ u.display_name }} and forget what they have watched?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="link-button small danger">Remove</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Add a person</h2>
+  <form method="post" action="{{ url_for('admin.add_user') }}" class="form-big">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="new-display">Name shown on screen <span class="muted">(for example "Mom")</span></label>
+    <input id="new-display" name="display_name" type="text" maxlength="60" autocomplete="off">
+    <label for="new-username">Sign-in name</label>
+    <input id="new-username" name="username" type="text" required maxlength="40" autocomplete="off" autocapitalize="none">
+    <label for="new-password">Password <span class="muted">(at least 8 characters; a few easy words work well)</span></label>
+    <input id="new-password" name="password" type="text" required minlength="8" autocomplete="off">
+    <label class="check-row"><input type="checkbox" name="is_admin" value="1"> Can manage people and videos</label>
+    <button type="submit" class="btn btn-primary">Add person</button>
+  </form>
+</section>
+{% endblock %}

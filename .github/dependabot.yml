@@ -1,0 +1,41 @@
+version: 2
+
+# Weekly update pull requests, on Sunday so the Monday release picks them up.
+# New releases wait 7 days before being proposed (a guard against hijacked or bad releases).
+# Security updates for known vulnerabilities are opened straight away, whatever this says.
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+    cooldown:
+      default-days: 7
+    groups:
+      python-dependencies:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"

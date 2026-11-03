@@ -1,0 +1,89 @@
+name: Image scan
+
+# Looks for newly published vulnerabilities in the released image every day, and right after each publish
+# (publish.yml calls this workflow).
+# Findings go to the repository's Security tab. If one has a fix available, the image is rebuilt
+# (at most once a day) and the run is marked failed so you get a notification.
+on:
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  scan:
+    name: Scan the published image
+    if: vars.DOCKERHUB_USERNAME != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write   # to upload results to the Security tab
+      actions: write           # to start a rebuild
+    env:
+      IMAGE: docker.io/${{ vars.DOCKERHUB_NAMESPACE || vars.DOCKERHUB_USERNAME }}/stories-and-videos:latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: exists
+        name: Is there a published image yet?
+        run: |
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nothing has been published yet, so there is nothing to scan."
+          fi
+      - name: Scan and write a report for the Security tab
+        if: steps.exists.outputs.found == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}
+          format: sarif
+          output: trivy-image.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          trivyignores: .trivyignore
+          hide-progress: true
+      - name: Upload the report
+        if: steps.exists.outputs.found == 'true'
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
+        with:
+          sarif_file: trivy-image.sarif
+          category: published-image
+      - id: gate
+        name: Fail on high-severity problems that have a fix
+        if: steps.exists.outputs.found == 'true'
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+          hide-progress: true
+      - name: Rebuild the image
+        if: steps.gate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow publish.yml --limit 1 --json createdAt --jq '.[0].createdAt // empty')
+          if [ -n "$last" ] && [ $(( $(date +%s) - $(date -d "$last" +%s) )) -lt 72000 ]; then
+            echo "::warning::A fixable vulnerability is present, but the image was rebuilt less than a day ago."
+          else
+            gh workflow run publish.yml --repo "$GITHUB_REPOSITORY"
+            echo "::warning::A fixable vulnerability is present. A rebuild of the newest release has been started."
+          fi
+      - name: Mark the run as failed
+        if: steps.gate.outcome == 'failure'
+        run: |
+          echo "::error::The published image has a high-severity vulnerability that has a fix."
+          exit 1

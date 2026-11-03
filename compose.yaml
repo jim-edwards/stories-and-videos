@@ -1,0 +1,30 @@
+# Stories and Videos - docker compose file.
+#
+# Before starting, change the two host paths under "volumes" to real folders on your server:
+#   * the first holds your videos (read-only: the app never changes them)
+#   * the second holds the app's own small database (must be writable by "user" below)
+#
+# Start:   docker compose up -d
+# Logs:    docker compose logs -f          (the first-start admin password is printed here)
+# Update:  docker compose pull && docker compose up -d
+
+services:
+  stories:
+    image: jimbo333/stories-and-videos:1  # "1" follows the newest 1.x release; use e.g. 1.0.3 to stay on one release
+    # build: .                            # to build from this source folder instead, use this and drop the image line
+    container_name: stories-and-videos
+    restart: unless-stopped
+    init: true
+    user: "568:568"                       # must be able to read the videos and write the data folder
+    ports:
+      - "8080:8080"                       # point your reverse proxy at this port
+    environment:
+      TRUST_PROXY: "1"                    # one reverse proxy in front (so https and the visitor's address are right); use "0" with none
+      # First start only: the administrator account. If ADMIN_PASSWORD is left out, a random
+      # one is generated and printed in the container log.
+      # ADMIN_USERNAME: "admin"
+      # ADMIN_PASSWORD: "choose-something-long"
+      # SCAN_INTERVAL: "300"              # seconds between automatic checks for new videos
+    volumes:
+      - /srv/stories/videos:/videos:ro    # <-- CHANGE: your video folder
+      - /srv/stories/data:/data           # <-- CHANGE: a small writable folder for the database

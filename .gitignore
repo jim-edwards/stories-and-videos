@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Local runtime and test data: never commit these
+/data/
+/videos/
+/sample-videos/
+*.db
+*.db-wal
+*.db-shm
+secret.key
+.env

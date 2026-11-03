@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+tests
+data
+videos
+sample-videos
+README.md
+SECURITY.md
+compose.yaml
+requirements.in
+requirements-dev.txt
+.hadolint.yaml
+.trivyignore

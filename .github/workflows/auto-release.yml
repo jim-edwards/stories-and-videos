@@ -1,0 +1,51 @@
+name: Weekly release
+
+# Every Monday: if the app, Dockerfile or dependencies changed since the last release, tag the next
+# patch version and publish it. Otherwise rebuild the newest release so operating-system security
+# fixes reach the published image. Minor and major releases are made by pushing a tag by hand.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  release:
+    name: Release or rebuild
+    if: vars.DOCKERHUB_USERNAME != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write   # to create the tag
+      actions: write    # to start the publish workflow
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag the next patch release, or pick the newest one to rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          last=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          if [ -z "$last" ]; then
+            echo "::notice::There is no release yet. Push the first tag (for example v1.0.0) by hand."
+            exit 0
+          fi
+          # Only changes to what goes into the image count; workflow and docs changes do not.
+          if git diff --quiet "$last" HEAD -- app Dockerfile requirements.txt scripts/make-thumbnails.sh LICENSE; then
+            echo "Nothing new to ship since $last; rebuilding it to pick up operating-system fixes."
+            target="$last"
+          else
+            IFS=. read -r major minor patch <<EOF
+          ${last#v}
+          EOF
+            target="v${major}.${minor}.$((patch + 1))"
+            echo "Changes since $last; releasing $target."
+            # A tag made with the workflow token does not start other workflows, so publish is started below.
+            gh api "repos/${REPO}/git/refs" -f "ref=refs/tags/${target}" -f "sha=$(git rev-parse HEAD)" >/dev/null
+          fi
+          gh workflow run publish.yml --repo "$REPO" -f "tag=${target}"

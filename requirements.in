@@ -1,0 +1,4 @@
+# Direct runtime dependencies. requirements.txt is generated from this file; regenerate it with
+#   pip-compile --generate-hashes --strip-extras --output-file requirements.txt requirements.in
+Flask==3.1.3
+gunicorn==26.2.0

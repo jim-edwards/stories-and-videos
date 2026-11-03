@@ -1,0 +1,3 @@
+# Dockerfile linter settings. DL3018 (pin apk package versions) is ignored on purpose in the
+# Dockerfile itself, so rebuilds pick up security fixes.
+failure-threshold: warning

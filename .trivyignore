@@ -1,0 +1,2 @@
+# CVE ids that were reviewed and accepted, one per line, each with a comment saying why and until when.
+# Keep this empty unless a finding has no fix and does not apply to this app.

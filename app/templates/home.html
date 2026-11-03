@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block content %}
+<h1>Hello, {{ user.display_name }}</h1>
+
+{% if not stories %}
+  <p class="lead">There are no stories here yet. Please check back soon.</p>
+{% else %}
+  <p class="lead">Here are your stories. Tap <strong>Play</strong> on any video to watch it.</p>
+{% endif %}
+
+{% for story in stories %}
+{% set unseen = story.unseen %}
+{% set n = loop.index %}
+<section class="story{% if story.all_seen %} done{% endif %}" id="story-{{ n }}" aria-labelledby="story-title-{{ n }}">
+  <header class="story-head">
+    <h2 id="story-title-{{ n }}">{{ story.title }}</h2>
+    {% if unseen %}<span class="badge">{{ unseen|length }} to watch</span>{% endif %}
+  </header>
+
+  {% if story.all_seen %}
+    <p class="all-done"><span aria-hidden="true">✓</span> You have seen all of these.</p>
+  {% else %}
+    {% for v in unseen[:show_at_first] %}{{ card(v, first=loop.first) }}{% endfor %}
+    {% if unseen|length > show_at_first %}
+    <details class="more">
+      <summary>Show {{ unseen|length - show_at_first }} more</summary>
+      {% for v in unseen[show_at_first:] %}{{ card(v) }}{% endfor %}
+    </details>
+    {% endif %}
+  {% endif %}
+
+  {% if story.seen %}
+  <details class="seen"{% if open_story == n %} open{% endif %}>
+    <summary>Already seen ({{ story.seen|length }})</summary>
+    <ul class="seen-list">
+      {% for v in story.seen %}
+      <li>
+        <div class="seen-title">
+          {% if v.thumb %}<img class="seen-thumb" src="{{ url_for('views.thumb', video_id=v.id) }}" alt="" loading="lazy" decoding="async">{% endif %}
+          <span><span class="check" aria-hidden="true">✓</span> {{ v.title }}</span>
+        </div>
+        <div class="seen-actions">
+          <a class="btn btn-secondary btn-small" href="{{ url_for('views.watch', video_id=v.id) }}"
+             aria-label="Watch {{ v.title }} again">Watch again</a>
+          <form method="post" action="{{ url_for('views.mark_unseen', video_id=v.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button small" aria-label="Mark {{ v.title }} as not seen">Mark as not seen</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

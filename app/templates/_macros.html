@@ -1,0 +1,24 @@
+{# A video waiting to be watched. `first` marks the one to watch next. #}
+{% macro card(v, first=False) %}
+<article class="card{% if first %} next{% endif %}{% if v.thumb %} has-thumb{% endif %}">
+  {% if v.thumb %}
+  <a class="thumb" href="{{ url_for('views.watch', video_id=v.id) }}" tabindex="-1" aria-hidden="true">
+    <img src="{{ url_for('views.thumb', video_id=v.id) }}" alt="" loading="lazy" decoding="async">
+  </a>
+  {% endif %}
+  <div class="card-body">
+  {% if first %}<p class="tag">Up next</p>{% endif %}
+  <h3><a href="{{ url_for('views.watch', video_id=v.id) }}">{{ v.title }}</a></h3>
+  {% if v.duration or v.resume_at %}
+  <p class="meta">
+    {% if v.duration %}{{ v.duration|nice_duration }}{% endif %}
+    {% if v.resume_at %}{% if v.duration %} · {% endif %}You stopped part-way{% endif %}
+  </p>
+  {% endif %}
+  {% if v.resume_at %}<progress max="100" value="{{ v.percent_done }}" aria-label="{{ v.percent_done }} percent watched">{{ v.percent_done }}%</progress>{% endif %}
+  {% if v.description %}<p class="desc">{{ v.description }}</p>{% endif %}
+  <a class="btn btn-primary" href="{{ url_for('views.watch', video_id=v.id) }}"
+     aria-label="{{ 'Continue' if v.resume_at else 'Play' }} {{ v.title }}"><span aria-hidden="true">▶</span> {{ 'Continue' if v.resume_at else 'Play' }}</a>
+  </div>
+</article>
+{% endmacro %}

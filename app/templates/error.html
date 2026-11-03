@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} – {{ site_name }}{% endblock %}
+{% block content %}
+<section class="login">
+  <h1>{{ title }}</h1>
+  <p class="lead">{{ message }}</p>
+  <p><a class="btn btn-primary" href="{{ url_for('views.home') }}">Go to my stories</a></p>
+</section>
+{% endblock %}
