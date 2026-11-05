@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 SCHEMA = """
@@ -12,7 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
     display_name  TEXT    NOT NULL,
     password_hash TEXT    NOT NULL,
     is_admin      INTEGER NOT NULL DEFAULT 0,
-    created_at    REAL    NOT NULL
+    created_at    REAL    NOT NULL,
+    daily_minutes INTEGER,                   -- minutes of new videos released per day; NULL = no limit
+    subscribe_all INTEGER NOT NULL DEFAULT 1 -- 1 = every story; 0 = only the ones in `subscriptions`
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -50,6 +53,37 @@ CREATE TABLE IF NOT EXISTS progress (
     updated_at REAL    NOT NULL,
     PRIMARY KEY (user_id, video_id)
 );
+
+-- The stories a person has been given, used when users.subscribe_all is 0.
+CREATE TABLE IF NOT EXISTS subscriptions (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    story   TEXT    NOT NULL,
+    PRIMARY KEY (user_id, story)
+);
+
+-- Videos let through to a person who has a daily limit. `counted` is 0 for videos they chose to put
+-- back on their list themselves ("Mark as not seen"), which never use up the day's new videos.
+CREATE TABLE IF NOT EXISTS releases (
+    user_id     INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+    video_id    INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    released_at REAL    NOT NULL,
+    counted     INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (user_id, video_id)
+);
+
+-- Where each person is in today's allowance: how much was still waiting when the day began
+-- (`carried`) and how much has been released since (`released`), both in seconds.
+CREATE TABLE IF NOT EXISTS release_days (
+    user_id  INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    day      TEXT NOT NULL,
+    carried  REAL NOT NULL,
+    released REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -70,6 +104,11 @@ class Database:
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(videos)")}
         if "thumb" not in columns:
             conn.execute("ALTER TABLE videos ADD COLUMN thumb TEXT")
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+        if "daily_minutes" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN daily_minutes INTEGER")
+        if "subscribe_all" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN subscribe_all INTEGER NOT NULL DEFAULT 1")
 
     def connect(self) -> sqlite3.Connection:
         """Open a new connection. Connections are cheap; use one per request/thread."""
@@ -79,3 +118,16 @@ class Database:
         conn.execute("PRAGMA busy_timeout = 15000")
         conn.execute("PRAGMA synchronous = NORMAL")
         return conn
+
+
+@contextmanager
+def transaction(conn: sqlite3.Connection, *, write: bool = True):
+    """Run a group of statements all-or-nothing. `write` takes the write lock straight away, so
+    two requests can't both act on the same stale reading."""
+    conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+    try:
+        yield conn
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+    conn.execute("COMMIT")

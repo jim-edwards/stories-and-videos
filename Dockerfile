@@ -7,11 +7,11 @@ LABEL org.opencontainers.image.title="Stories and Videos" \
       org.opencontainers.image.licenses="GPL-3.0-only"
 
 # `apk upgrade` pulls in security fixes published since the base image was built. ffprobe (part of
-# the ffmpeg package) reads each video's title and description. Package versions are deliberately
-# not pinned here, so every rebuild picks up fixes.
+# the ffmpeg package) reads each video's title and description. tzdata lets TZ name a time zone.
+# Package versions are deliberately not pinned here, so every rebuild picks up fixes.
 # hadolint ignore=DL3018
 RUN apk upgrade --no-cache \
- && apk add --no-cache ffmpeg \
+ && apk add --no-cache ffmpeg tzdata \
  && addgroup -g 568 -S apps && adduser -u 568 -S -G apps apps \
  && mkdir -p /data /videos && chown apps:apps /data
 

@@ -12,7 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from . import auth
 from .config import Config
 from .db import Database
-from .naming import nice_duration
+from .naming import nice_duration, nice_time, story_title
 from .scanner import Scanner
 
 log = logging.getLogger(__name__)
@@ -71,6 +71,8 @@ def create_app(config: Config | None = None, *, start_scanner: bool = True) -> F
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=n, x_proto=n, x_host=n)
 
     app.add_template_filter(nice_duration)
+    app.add_template_filter(nice_time)
+    app.add_template_filter(story_title)
 
     scanner = Scanner(cfg, db)
     app.extensions["sv"] = Services(cfg, db, scanner, auth.LoginThrottle())

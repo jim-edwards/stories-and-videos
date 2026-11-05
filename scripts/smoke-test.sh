@@ -67,6 +67,8 @@ check "default user"
 "$engine" exec "$name" sh -c 'command -v make-thumbnails >/dev/null' || fail "make-thumbnails is missing"
 "$engine" exec "$name" test -s /usr/share/licenses/stories-and-videos/LICENSE || fail "the license text is missing from the image"
 ok "ffprobe, make-thumbnails and the license are in the image"
+"$engine" exec "$name" python -c "from zoneinfo import ZoneInfo; ZoneInfo('America/Chicago')" || fail "the time zone database is missing"
+ok "time zone names work"
 
 check "other user id" --user 12345:23456
 

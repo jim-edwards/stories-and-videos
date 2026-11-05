@@ -15,6 +15,8 @@ self-hosted: one small container, your own video files, no cloud account.
 * Videos play in the browser, resume where they were left off, and offer a big
   **Next** button at the end.
 * A text-size switch (A A **A**) in the header makes everything bigger.
+* Optionally, each person can be given a **daily amount** of new video (say 30 minutes), so they only see
+  that much at a time, and a **choice of stories**, so they only see the ones meant for them.
 
 ## Quick start
 
@@ -104,6 +106,38 @@ container you actually use for the site keeps the folder read-only.) With ffmpeg
 instead run `scripts/make-thumbnails.sh /path/to/videos`. To use your own artwork, just save it next to the
 video with the matching name.
 
+## Choosing what each person sees
+
+Open **Manage**, then **Stories & daily amount** next to a person.
+
+**Which stories.** By default everyone sees every story, including ones added later. Choose *Only the
+stories ticked below* to give someone a subset. New stories are not added to such a person automatically,
+so tick them when they appear. A story they can't see can't be played either, even by typing its address.
+
+**A daily amount of new video.** By default people see every unwatched video at once. Give someone a number
+of minutes a day and the site *releases* new videos to them a little at a time, so there is never more than
+about that much new video waiting, and nobody is tempted to watch the lot in one sitting:
+
+* Videos are released in each story's **playing order**. A story's next video is never skipped, so if it is
+  too long to fit today, that story waits.
+* **Stories take turns**, one video each, then a second from each, and so on while there is room. The story
+  that has waited longest goes first the next day.
+* The amount is **per day, not per sitting**. What isn't watched yesterday is still there and counts towards
+  today, so the waiting list never grows past the daily amount. A half-watched video counts for what is left
+  of it. Watching more doesn't release more until the day turns over.
+* A video **longer than the whole daily amount** is released on its own, when nothing else is waiting, so it
+  can never get stuck.
+* Videos with no readable length count as 10 minutes.
+* **Videos already seen can always be watched again**, and putting one back with *Mark as not seen* doesn't
+  use up any of the day's new ones.
+* The day turns over at **1:00 AM** unless you change it under *Daily release* on the Manage page. The new
+  videos appear the first time the person visits after that, and also straight away when you change their
+  settings or new videos arrive on a day that still has room.
+* Choose *Show every video at once* to remove the limit again.
+
+Set the container's time zone with `TZ` (for example `TZ=America/Chicago`) so "1:00 AM" is your 1 AM. Without
+it the site uses UTC.
+
 ## Running it for family: HTTPS and a reverse proxy
 
 The site is only as private as its login, so if it can be reached from the internet, serve it over **HTTPS**
@@ -134,7 +168,7 @@ a normal proxy host for that name is enough.
 
 ## Managing people
 
-The **Manage** page (shown to admins only) adds people, changes passwords, removes people, and
+The **Manage** page (shown to admins only) adds people, changes passwords, removes people, chooses what each can see, and
 re-checks the video folder. From a shell you can do the same:
 
 ```bash
@@ -158,6 +192,7 @@ password of a few easy words works well for older relatives.
 | `SCAN_INTERVAL` | `300` | Seconds between automatic checks for new videos |
 | `SETTLE_SECONDS` | `30` | Ignore files modified more recently than this (still copying) |
 | `SESSION_DAYS` | `365` | How long someone stays signed in without using the site |
+| `TZ` | `UTC` | Time zone name (such as `America/Chicago`) used for when the day turns over |
 
 The container runs as user `568` by default and works as any user id: set `--user` (or `user:` in Compose)
 to someone who can **read** the videos and **write** the data folder.

@@ -6,12 +6,19 @@ import sqlite3
 import time
 from dataclasses import dataclass, field
 
+from .db import transaction
 from .naming import natural_key, story_title
 
 # A video counts as watched once it ends or is 90% played (so credits don't matter).
 WATCHED_FRACTION = 0.9
 # Don't bother resuming if the person only got a few seconds in.
 MIN_RESUME_SECONDS = 10
+
+
+def order_key(track: int | None, rel_path: str):
+    """Playing order within a story: episode number from the file's metadata when present,
+    otherwise file name order."""
+    return (track is None, track or 0, natural_key(rel_path))
 
 
 @dataclass
@@ -29,8 +36,7 @@ class Video:
 
     @property
     def sort_key(self):
-        # Episode number from the file's metadata when present, otherwise file name order.
-        return (self.track is None, self.track or 0, natural_key(self.rel_path))
+        return order_key(self.track, self.rel_path)
 
     @property
     def resume_at(self) -> float:
@@ -51,6 +57,7 @@ class Video:
 class Story:
     folder: str
     videos: list[Video] = field(default_factory=list)  # in playing order
+    held_back: int = 0  # unseen videos not released yet (only for people with a daily limit)
 
     @property
     def title(self) -> str:
@@ -66,16 +73,32 @@ class Story:
 
     @property
     def all_seen(self) -> bool:
-        return bool(self.videos) and all(v.watched for v in self.videos)
+        return bool(self.videos) and all(v.watched for v in self.videos) and not self.held_back
+
+    @property
+    def caught_up(self) -> bool:
+        """Everything released so far is seen, but more will be released later."""
+        return bool(self.videos) and all(v.watched for v in self.videos) and self.held_back > 0
 
 
-_SELECT = """
-    SELECT v.id, v.story, v.rel_path, v.title, v.description, v.track, v.duration, v.thumb,
-           COALESCE(p.position, 0) AS position, COALESCE(p.watched, 0) AS watched
+# Which videos a person may see: those in a story they are subscribed to and, if they have a daily
+# limit, the ones released to them (or that they have already started or finished).
+SUBSCRIBED = "(u.subscribe_all = 1 OR v.story IN (SELECT story FROM subscriptions WHERE user_id = u.id))"
+_FROM = """
     FROM videos v
-    LEFT JOIN progress p ON p.video_id = v.id AND p.user_id = :user_id
-    WHERE v.missing = 0
+    JOIN users u ON u.id = :user_id
+    LEFT JOIN progress p ON p.video_id = v.id AND p.user_id = u.id
+    LEFT JOIN releases r ON r.video_id = v.id AND r.user_id = u.id
 """
+_VISIBLE = f"""
+    v.missing = 0 AND {SUBSCRIBED}
+    AND (u.daily_minutes IS NULL OR r.video_id IS NOT NULL OR p.video_id IS NOT NULL)
+"""
+_SELECT = (
+    """SELECT v.id, v.story, v.rel_path, v.title, v.description, v.track, v.duration, v.thumb,
+              COALESCE(p.position, 0) AS position, COALESCE(p.watched, 0) AS watched"""
+    + _FROM + " WHERE " + _VISIBLE
+)
 
 
 def _video(row: sqlite3.Row) -> Video:
@@ -86,13 +109,28 @@ def _video(row: sqlite3.Row) -> Video:
     )
 
 
-def load_stories(conn: sqlite3.Connection, user_id: int) -> list[Story]:
+def held_back(conn: sqlite3.Connection, user_id: int) -> dict[str, int]:
+    """How many videos are being held back for tomorrow or later, per story. Empty for anyone
+    without a daily limit."""
+    rows = conn.execute(
+        "SELECT v.story, COUNT(*) AS n" + _FROM
+        + " WHERE v.missing = 0 AND " + SUBSCRIBED
+        + " AND u.daily_minutes IS NOT NULL AND r.video_id IS NULL AND p.video_id IS NULL GROUP BY v.story",
+        {"user_id": user_id},
+    )
+    return {row["story"]: row["n"] for row in rows}
+
+
+def load_stories(conn: sqlite3.Connection, user_id: int, waiting: dict[str, int] | None = None) -> list[Story]:
     stories: dict[str, Story] = {}
     for row in conn.execute(_SELECT, {"user_id": user_id}):
         video = _video(row)
         stories.setdefault(video.story, Story(video.story)).videos.append(video)
+    if waiting is None:
+        waiting = held_back(conn, user_id)
     for story in stories.values():
         story.videos.sort(key=lambda v: v.sort_key)
+        story.held_back = waiting.get(story.folder, 0)
     # Loose files in the top folder ('') go last; otherwise folder-name order.
     return sorted(stories.values(), key=lambda s: (s.folder == "", natural_key(s.folder)))
 
@@ -100,6 +138,14 @@ def load_stories(conn: sqlite3.Connection, user_id: int) -> list[Story]:
 def get_video(conn: sqlite3.Connection, user_id: int, video_id: int) -> Video | None:
     row = conn.execute(_SELECT + " AND v.id = :video_id", {"user_id": user_id, "video_id": video_id}).fetchone()
     return _video(row) if row else None
+
+
+def file_paths(conn: sqlite3.Connection, user_id: int, video_id: int) -> sqlite3.Row | None:
+    """The video file and picture paths, if this person is allowed to see the video."""
+    return conn.execute(
+        "SELECT v.rel_path, v.thumb" + _FROM + " WHERE " + _VISIBLE + " AND v.id = :video_id",
+        {"user_id": user_id, "video_id": video_id},
+    ).fetchone()
 
 
 def story_videos(conn: sqlite3.Connection, user_id: int, folder: str) -> list[Video]:
@@ -124,7 +170,10 @@ def is_finished(position: float, duration: float, ended: bool) -> bool:
 def record_progress(conn: sqlite3.Connection, user_id: int, video_id: int,
                     position: float, duration: float, ended: bool) -> bool | None:
     """Save where someone is in a video. Returns whether it's now watched, or None if no such video."""
-    video = conn.execute("SELECT duration FROM videos WHERE id = ? AND missing = 0", (video_id,)).fetchone()
+    video = conn.execute(
+        "SELECT v.duration" + _FROM + " WHERE " + _VISIBLE + " AND v.id = :video_id",
+        {"user_id": user_id, "video_id": video_id},
+    ).fetchone()
     if video is None:
         return None
     if duration <= 0:
@@ -149,4 +198,48 @@ def record_progress(conn: sqlite3.Connection, user_id: int, video_id: int,
 
 
 def mark_unseen(conn: sqlite3.Connection, user_id: int, video_id: int) -> None:
-    conn.execute("DELETE FROM progress WHERE user_id = ? AND video_id = ?", (user_id, video_id))
+    with transaction(conn):
+        row = conn.execute("SELECT watched FROM progress WHERE user_id = ? AND video_id = ?", (user_id, video_id)).fetchone()
+        if row is None:
+            return
+        conn.execute("DELETE FROM progress WHERE user_id = ? AND video_id = ?", (user_id, video_id))
+        if row["watched"]:
+            # Wanting to see an old favourite again is their own choice: keep it on their list
+            # without it using up (or later counting against) the day's new videos.
+            conn.execute(
+                """INSERT INTO releases (user_id, video_id, released_at, counted) VALUES (?, ?, 0, 0)
+                   ON CONFLICT(user_id, video_id) DO UPDATE SET counted = 0""",
+                (user_id, video_id),
+            )
+
+
+# -- which stories a person is subscribed to ------------------------------------------------
+
+
+def story_choices(conn: sqlite3.Connection) -> list[tuple[str, int]]:
+    """Every story in the library with its number of videos, in the order stories are listed."""
+    rows = conn.execute("SELECT story, COUNT(*) AS n FROM videos WHERE missing = 0 GROUP BY story").fetchall()
+    return sorted(((r["story"], r["n"]) for r in rows), key=lambda c: (c[0] == "", natural_key(c[0])))
+
+
+def subscribed_stories(conn: sqlite3.Connection, user_id: int) -> set[str]:
+    return {r["story"] for r in conn.execute("SELECT story FROM subscriptions WHERE user_id = ?", (user_id,))}
+
+
+def set_subscriptions(conn: sqlite3.Connection, user_id: int, stories: set[str] | None) -> None:
+    """Choose the stories a person sees. None means all of them, including ones added later."""
+    with transaction(conn):
+        if stories is None:
+            conn.execute("UPDATE users SET subscribe_all = 1 WHERE id = ?", (user_id,))
+            return
+        known = {r["story"] for r in conn.execute("SELECT DISTINCT story FROM videos")}
+        listed = {story for story, _ in story_choices(conn)}
+        # A story whose files are all missing right now isn't shown to be ticked, so keep whatever
+        # was chosen for it instead of forgetting it.
+        keep = {s for s in subscribed_stories(conn, user_id) if s not in listed}
+        conn.execute("UPDATE users SET subscribe_all = 0 WHERE id = ?", (user_id,))
+        conn.execute("DELETE FROM subscriptions WHERE user_id = ?", (user_id,))
+        conn.executemany(
+            "INSERT INTO subscriptions (user_id, story) VALUES (?, ?)",
+            [(user_id, s) for s in sorted((stories & known) | keep)],
+        )

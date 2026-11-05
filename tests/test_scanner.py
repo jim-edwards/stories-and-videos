@@ -5,9 +5,9 @@ import time
 from app import scanner as scanner_mod
 
 
-def titles(db, story):
+def titles(db, user_id, story):
     from app import library
-    return [v.title for v in library.story_videos(db, 0, story)]
+    return [v.title for v in library.story_videos(db, user_id, story)]
 
 
 def test_reads_title_and_description_from_the_files(db):
@@ -24,13 +24,13 @@ def test_missing_title_falls_back_to_filename(db):
     assert row["description"] == ""
 
 
-def test_orders_by_file_name_naturally_and_by_track_when_present(db):
-    assert titles(db, "Alpha Tales") == ["One", "Two", "Ten"]
-    assert titles(db, "Beta") == ["First", "Second"]
+def test_orders_by_file_name_naturally_and_by_track_when_present(db, mom):
+    assert titles(db, mom, "Alpha Tales") == ["One", "Two", "Ten"]
+    assert titles(db, mom, "Beta") == ["First", "Second"]
 
 
-def test_loose_files_go_in_their_own_group(db):
-    assert titles(db, "") == ["A Loose Video"]
+def test_loose_files_go_in_their_own_group(db, mom):
+    assert titles(db, mom, "") == ["A Loose Video"]
 
 
 def test_ignores_hidden_folders_nas_junk_and_non_videos(db):
@@ -83,7 +83,7 @@ def test_unreadable_video_is_reported_not_added(services, db, library_dir):
     assert services.scanner.scan_once().unreadable == []
 
 
-def test_removed_file_is_hidden_but_remembered_and_comes_back(services, db, library_dir):
+def test_removed_file_is_hidden_but_remembered_and_comes_back(services, db, mom, library_dir):
     from app import library
     target = library_dir / "Alpha Tales" / "Part 2.mp4"
     moved_away = library_dir.parent / "parked.mp4"
@@ -91,12 +91,12 @@ def test_removed_file_is_hidden_but_remembered_and_comes_back(services, db, libr
     services.scanner.scan_once()
     row = db.execute("SELECT id, missing FROM videos WHERE title = 'Two'").fetchone()
     assert row["missing"] == 1
-    assert titles(db, "Alpha Tales") == ["One", "Ten"]
+    assert titles(db, mom, "Alpha Tales") == ["One", "Ten"]
 
     shutil.move(moved_away, target)
     services.scanner.scan_once()
     assert db.execute("SELECT missing FROM videos WHERE id = ?", (row["id"],)).fetchone()["missing"] == 0
-    assert titles(db, "Alpha Tales") == ["One", "Two", "Ten"]
+    assert titles(db, mom, "Alpha Tales") == ["One", "Two", "Ten"]
 
 
 def test_moved_or_renamed_file_keeps_its_identity_and_watch_history(services, db, mom, library_dir):

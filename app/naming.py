@@ -44,3 +44,8 @@ def nice_duration(seconds: float | None) -> str:
     if minutes:
         parts.append(f"{minutes} minute{'' if minutes == 1 else 's'}")
     return " ".join(parts)
+
+
+def nice_time(moment) -> str:
+    """'1:00 AM' - a clock time in plain 12-hour form."""
+    return f"{moment.hour % 12 or 12}:{moment.minute:02d} {'AM' if moment.hour < 12 else 'PM'}"

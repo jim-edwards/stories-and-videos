@@ -8,7 +8,7 @@ from flask import (Blueprint, abort, g, jsonify, make_response, redirect, render
                    send_file, url_for)
 from werkzeug.security import safe_join
 
-from . import auth, current_services, get_db, library
+from . import auth, current_services, get_db, library, release
 from .naming import story_title
 
 bp = Blueprint("views", __name__)
@@ -75,10 +75,14 @@ def logout():
 @bp.get("/")
 @auth.login_required
 def home():
-    stories = library.load_stories(get_db(), g.user["id"])
+    conn = get_db()
+    # People with a daily amount get their next videos the first time they come by after the day turns over.
+    release.ensure_released(conn, g.user["id"], current_services().cfg.timezone)
+    held = library.held_back(conn, g.user["id"])
     return render_template(
         "home.html",
-        stories=stories,
+        stories=library.load_stories(conn, g.user["id"], held),
+        more_later=bool(held),
         show_at_first=SHOW_AT_FIRST,
         open_story=request.args.get("open", type=int),
     )
@@ -133,7 +137,7 @@ def _send_library_file(rel_path: str, mimetypes: dict[str, str], default: str, *
 @bp.get("/media/<int:video_id>")
 @auth.login_required
 def media(video_id: int):
-    row = get_db().execute("SELECT rel_path FROM videos WHERE id = ? AND missing = 0", (video_id,)).fetchone()
+    row = library.file_paths(get_db(), g.user["id"], video_id)
     if row is None:
         abort(404)
     return _send_library_file(row["rel_path"], MIME_TYPES, "video/mp4")
@@ -142,7 +146,7 @@ def media(video_id: int):
 @bp.get("/thumb/<int:video_id>")
 @auth.login_required
 def thumb(video_id: int):
-    row = get_db().execute("SELECT thumb FROM videos WHERE id = ? AND missing = 0", (video_id,)).fetchone()
+    row = library.file_paths(get_db(), g.user["id"], video_id)
     if row is None or not row["thumb"]:
         abort(404)
     return _send_library_file(row["thumb"], IMAGE_TYPES, "image/jpeg", max_age=300)

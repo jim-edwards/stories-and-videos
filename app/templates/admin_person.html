@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ person.display_name }} – Manage – {{ site_name }}{% endblock %}
+{% block content %}
+<p class="back"><a class="btn btn-secondary" href="{{ url_for('admin.index') }}"><span aria-hidden="true">←</span> Back to Manage</a></p>
+<h1>{{ person.display_name }}</h1>
+
+<section class="panel">
+  <h2>How much new video each day</h2>
+  <form method="post" action="{{ url_for('admin.set_daily', user_id=person.id) }}" class="form-big">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="check-row"><input type="radio" name="mode" value="all"{% if not person.daily_minutes %} checked{% endif %}>
+      Show every video at once</label>
+    <label class="check-row"><input type="radio" name="mode" value="daily"{% if person.daily_minutes %} checked{% endif %}>
+      Release about this many minutes of new videos each day:</label>
+    <label class="sr-only" for="minutes">Minutes a day</label>
+    <input id="minutes" name="minutes" type="text" inputmode="numeric" maxlength="3" size="5" class="short"
+           value="{{ person.daily_minutes or '' }}" placeholder="30" autocomplete="off">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  <p class="muted">
+    {{ person.display_name }} only sees what has been released, so there is never more than this much new
+    video waiting to be watched. Anything not watched yesterday stays on the list and counts towards today's
+    amount. Stories take turns, one video each, and each story's videos are released in their playing order.
+    A video longer than the whole daily amount is released on its own. Videos already seen can always be
+    watched again and never count.
+  </p>
+
+  {% if summary.minutes %}
+  <p>
+    <strong>Waiting to be watched:</strong> {{ summary.waiting|nice_duration or 'nothing' }}
+    · <strong>Held back for later:</strong> {{ summary.held_back }} video{{ '' if summary.held_back == 1 else 's' }}
+    · <strong>Next release:</strong> {{ summary.next_reset.strftime('%A') }} at {{ summary.next_reset|nice_time }} ({{ timezone_name }})
+  </p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Which stories {{ person.display_name }} can see</h2>
+  <form method="post" action="{{ url_for('admin.set_stories', user_id=person.id) }}" class="form-big">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="check-row"><input type="radio" name="mode" value="all"{% if person.subscribe_all %} checked{% endif %}>
+      All stories, including any added later</label>
+    <label class="check-row"><input type="radio" name="mode" value="some"{% if not person.subscribe_all %} checked{% endif %}>
+      Only the stories ticked below (new stories are not added automatically):</label>
+    <ul class="pick-list">
+      {% for story, count in choices %}
+      <li><label class="check-row">
+        <input type="checkbox" name="story" value="{{ story }}"{% if story in chosen %} checked{% endif %}>
+        {{ story|story_title }} <span class="muted">({{ count }} video{{ '' if count == 1 else 's' }})</span>
+      </label></li>
+      {% else %}
+      <li class="muted">There are no stories yet.</li>
+      {% endfor %}
+    </ul>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+</section>
+{% endblock %}

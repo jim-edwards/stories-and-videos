@@ -34,6 +34,24 @@
 </section>
 
 <section class="panel">
+  <h2>Daily release</h2>
+  <p>
+    People who are given a daily amount only see that much new video at a time. The next videos appear
+    the first time they visit after the day turns over, at the time below
+    (<strong>{{ timezone_name }}</strong> time{% if timezone_name == 'UTC' %}; set the <code>TZ</code> setting of the container, for example <code>America/Chicago</code>, to use your own{% endif %}).
+    Set each person's amount on their own page, under <strong>Stories &amp; daily amount</strong>.
+  </p>
+  <form method="post" action="{{ url_for('admin.set_release_time') }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="release-time">The day turns over at</label>
+    <input id="release-time" name="release_time" type="text" value="{{ release_time.strftime('%H:%M') }}"
+           inputmode="numeric" maxlength="5" size="6" required aria-describedby="release-time-help">
+    <button type="submit" class="btn btn-secondary btn-small">Save</button>
+  </form>
+  <p id="release-time-help" class="muted">Use 24-hour time: <code>01:00</code> is 1 AM and <code>13:30</code> is 1:30 PM.</p>
+</section>
+
+<section class="panel">
   <h2>People</h2>
   <ul class="people">
     {% for u in users %}
@@ -41,7 +59,13 @@
       <div class="person">
         <strong>{{ u.display_name }}</strong>
         <span class="muted">sign-in name: {{ u.username }}{% if u.is_admin %} · can manage{% endif %} · has seen {{ u.seen_count }} video{{ '' if u.seen_count == 1 else 's' }}</span>
+        <span class="muted">
+          {% if u.daily_minutes %}{{ u.daily_minutes }} minutes of new videos a day{% else %}all videos at once{% endif %}
+          · {% if u.subscribe_all %}all stories{% else %}{{ u.story_count }} stor{{ 'y' if u.story_count == 1 else 'ies' }} chosen{% endif %}
+        </span>
       </div>
+      <a class="btn btn-secondary btn-small" href="{{ url_for('admin.person', user_id=u.id) }}"
+         aria-label="Choose stories and daily amount for {{ u.display_name }}">Stories &amp; daily amount</a>
       <form method="post" action="{{ url_for('admin.reset_password', user_id=u.id) }}" class="inline-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label class="sr-only" for="pw-{{ u.id }}">New password for {{ u.display_name }}</label>

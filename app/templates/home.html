@@ -3,8 +3,13 @@
 {% block content %}
 <h1>Hello, {{ user.display_name }}</h1>
 
-{% if not stories %}
+{% set anything_to_watch = stories|selectattr('unseen')|list|length > 0 %}
+{% if not stories and more_later %}
+  <p class="lead">There is nothing new to watch right now. More will be ready tomorrow.</p>
+{% elif not stories %}
   <p class="lead">There are no stories here yet. Please check back soon.</p>
+{% elif not anything_to_watch and more_later %}
+  <p class="lead"><span aria-hidden="true">✓</span> You have watched everything for today. More will be ready tomorrow.</p>
 {% else %}
   <p class="lead">Here are your stories. Tap <strong>Play</strong> on any video to watch it.</p>
 {% endif %}
@@ -20,6 +25,8 @@
 
   {% if story.all_seen %}
     <p class="all-done"><span aria-hidden="true">✓</span> You have seen all of these.</p>
+  {% elif story.caught_up %}
+    <p class="all-done"><span aria-hidden="true">✓</span> You have seen today's videos from this story. More will be ready tomorrow.</p>
   {% else %}
     {% for v in unseen[:show_at_first] %}{{ card(v, first=loop.first) }}{% endfor %}
     {% if unseen|length > show_at_first %}

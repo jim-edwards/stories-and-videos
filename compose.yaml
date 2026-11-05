@@ -20,6 +20,7 @@ services:
       - "8080:8080"                       # point your reverse proxy at this port
     environment:
       TRUST_PROXY: "1"                    # one reverse proxy in front (so https and the visitor's address are right); use "0" with none
+      TZ: "America/Chicago"               # <-- CHANGE: your time zone, used for when the daily release of new videos happens
       # First start only: the administrator account. If ADMIN_PASSWORD is left out, a random
       # one is generated and printed in the container log.
       # ADMIN_USERNAME: "admin"
