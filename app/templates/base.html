@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%BA%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -13,6 +14,11 @@
     <a class="brand" href="{{ url_for('views.home') }}">{{ site_name }}</a>
     {% if user %}
     <nav class="top-nav" aria-label="Settings">
+      <div class="theme-switch" role="group" aria-label="Colors">
+        <button type="button" class="mode-btn" data-set-theme="auto" aria-pressed="false" aria-label="Automatic: use this device's setting">Auto</button>
+        <button type="button" class="mode-btn" data-set-theme="light" aria-pressed="false">Light</button>
+        <button type="button" class="mode-btn" data-set-theme="dark" aria-pressed="false">Dark</button>
+      </div>
       <div class="text-size" role="group" aria-label="Text size">
         <button type="button" class="size-btn size-1" data-size="normal" aria-label="Normal text size">A</button>
         <button type="button" class="size-btn size-2" data-size="large" aria-label="Larger text size">A</button>

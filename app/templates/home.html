@@ -44,7 +44,7 @@
       {% for v in story.seen %}
       <li>
         <div class="seen-title">
-          {% if v.thumb %}<img class="seen-thumb" src="{{ url_for('views.thumb', video_id=v.id) }}" alt="" loading="lazy" decoding="async">{% endif %}
+          {% if v.thumb %}<span class="seen-pic"><img class="seen-thumb" src="{{ url_for('views.thumb', video_id=v.id) }}" alt="" loading="lazy" decoding="async"></span>{% endif %}
           <span><span class="check" aria-hidden="true">✓</span> {{ v.title }}</span>
         </div>
         <div class="seen-actions">

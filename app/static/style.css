@@ -1,19 +1,67 @@
 /* Stories and Videos - built for large, clear, calm screens. */
 
 :root {
+  color-scheme: light;
   --bg: #faf6ee;
   --card: #ffffff;
   --ink: #1c1a17;
   --muted: #55504a;
   --line: #d6cdb9;
   --primary: #0a58b4;
-  --primary-dark: #07417f;
+  --primary-hover: #07417f;
+  --on-primary: #ffffff;       /* text on a --primary background */
+  --hover-bg: #eef4fb;
+  --field: #ffffff;
+  --field-line: #8b8478;
   --ok: #17692f;
   --ok-bg: #e4f3e8;
   --err: #8f1b1b;
   --err-bg: #fce9e9;
   --focus: #e08a00;
   --radius: 18px;
+}
+
+/* Dark colours. They are used when the person chose "Dark" in the header, or, if they never chose,
+   when their device is set to dark. The two blocks must stay identical. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #15130f;
+    --card: #211e19;
+    --ink: #f4efe6;
+    --muted: #bdb5a8;
+    --line: #3b362e;
+    --primary: #7db7ff;
+    --primary-hover: #a9d0ff;
+    --on-primary: #0a2342;
+    --hover-bg: #2a3647;
+    --field: #2b2721;
+    --field-line: #968e80;
+    --ok: #7fd49a;
+    --ok-bg: #14301d;
+    --err: #ff9f9f;
+    --err-bg: #3a1919;
+    --focus: #ffb43a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15130f;
+  --card: #211e19;
+  --ink: #f4efe6;
+  --muted: #bdb5a8;
+  --line: #3b362e;
+  --primary: #7db7ff;
+  --primary-hover: #a9d0ff;
+  --on-primary: #0a2342;
+  --hover-bg: #2a3647;
+  --field: #2b2721;
+  --field-line: #968e80;
+  --ok: #7fd49a;
+  --ok-bg: #14301d;
+  --err: #ff9f9f;
+  --err-bg: #3a1919;
+  --focus: #ffb43a;
 }
 
 /* The text-size buttons in the header change this. */
@@ -70,17 +118,18 @@ h3 a:hover { text-decoration: underline; }
 .top-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
 .top-nav form { margin: 0; }
 
-.text-size { display: flex; gap: .3rem; }
-.size-btn {
+.text-size, .theme-switch { display: flex; gap: .3rem; }
+.size-btn, .mode-btn {
   min-width: 2.6rem; min-height: 2.6rem; padding: 0;
-  background: #fff; color: var(--primary);
+  background: var(--card); color: var(--primary);
   border: 2px solid var(--primary); border-radius: 10px;
-  font-weight: 700; cursor: pointer;
+  font: inherit; font-weight: 700; cursor: pointer;
 }
+.mode-btn { padding: 0 .8rem; font-size: .95rem; }
 .size-1 { font-size: .85rem; }
 .size-2 { font-size: 1.1rem; }
 .size-3 { font-size: 1.4rem; }
-.size-btn[aria-pressed="true"] { background: var(--primary); color: #fff; }
+.size-btn[aria-pressed="true"], .mode-btn[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
 
 /* ---- buttons ---- */
 
@@ -91,10 +140,10 @@ h3 a:hover { text-decoration: underline; }
   font: inherit; font-size: 1.1rem; font-weight: 700; line-height: 1.2;
   text-decoration: none; text-align: center; cursor: pointer;
 }
-.btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
-.btn-secondary { background: #fff; color: var(--primary); }
-.btn-secondary:hover { background: #eef4fb; }
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-secondary { background: var(--card); color: var(--primary); }
+.btn-secondary:hover { background: var(--hover-bg); }
 .btn-small { min-height: 2.6rem; padding: .2rem 1.1rem; font-size: 1rem; }
 .btn-huge { min-height: 4.2rem; padding: .6rem 2.4rem; font-size: 1.35rem; }
 
@@ -121,8 +170,8 @@ h3 a:hover { text-decoration: underline; }
 .form-big .btn { margin-top: 1.2rem; }
 input[type="text"], input[type="password"] {
   width: 100%; min-height: 3.2rem; padding: .4rem .9rem;
-  font: inherit; color: var(--ink); background: #fff;
-  border: 3px solid #8b8478; border-radius: 12px;
+  font: inherit; color: var(--ink); background: var(--field);
+  border: 3px solid var(--field-line); border-radius: 12px;
 }
 input[type="checkbox"], input[type="radio"] { width: 1.5rem; height: 1.5rem; flex: none; }
 
@@ -130,7 +179,7 @@ input[type="checkbox"], input[type="radio"] { width: 1.5rem; height: 1.5rem; fle
 
 .story { margin: 2.6rem 0; }
 .story-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; padding-bottom: .4rem; border-bottom: 3px solid var(--line); }
-.badge { background: var(--primary); color: #fff; font-size: .9rem; font-weight: 700; padding: .15rem .8rem; border-radius: 999px; }
+.badge { background: var(--primary); color: var(--on-primary); font-size: .9rem; font-weight: 700; padding: .15rem .8rem; border-radius: 999px; }
 
 /* A story with nothing left to watch fades back, but stays readable. */
 .story.done { opacity: .72; filter: grayscale(1); }
@@ -152,11 +201,20 @@ progress { display: block; width: 100%; height: .7rem; margin: .3rem 0 .6rem; ac
 /* A card with a picture: picture on the left, text on the right (stacked on small screens). */
 .card.has-thumb { display: flex; align-items: flex-start; gap: 1.3rem; }
 .card-body { flex: 1 1 auto; min-width: 0; }
-.thumb { flex: 0 0 min(40%, 15rem); display: block; }
-.thumb img, .seen-thumb {
-  display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
-  background: #d9d3c6; border-radius: 12px;
+/* Pictures come in every shape, so they are shown whole (scaled to fit, never cropped). The column
+   is a fixed width, so the text lines up from card to card. A wide picture fills it; a tall one is
+   limited in height and narrows to match, which uses the empty space under the text. */
+.thumb { flex: 0 0 min(40%, 13rem); display: block; }
+.thumb img {
+  display: block; margin: 0 auto;
+  width: auto; height: auto; max-width: 100%; max-height: min(20rem, 70vh);
+  min-width: min(100%, 6rem);   /* a small picture is zoomed up rather than left tiny */
+  aspect-ratio: auto 16 / 9;   /* room is kept for a 16:9 picture until the real shape is known */
+  object-fit: contain; border-radius: 12px;
 }
+/* The small pictures in the "Already seen" list: also shown whole, in a column of equal width so the titles line up. */
+.seen-pic { flex: 0 0 6rem; display: flex; justify-content: center; }
+.seen-thumb { display: block; width: auto; height: auto; max-width: 100%; max-height: 6rem; border-radius: 8px; }
 
 details > summary {
   display: flex; align-items: center; gap: .6rem; min-height: 3rem; padding: .3rem 0;
@@ -174,7 +232,6 @@ details.plain > summary { font-weight: 600; }
   padding: .7rem 0; border-top: 1px solid var(--line);
 }
 .seen-title { font-weight: 600; flex: 1 1 14rem; display: flex; align-items: center; gap: .9rem; }
-.seen-thumb { flex: none; width: 5.5rem; border-radius: 8px; }
 .check { color: var(--ok); font-weight: 800; }
 .seen-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
 .seen-actions form { margin: 0; }

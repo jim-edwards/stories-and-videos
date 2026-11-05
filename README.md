@@ -14,7 +14,9 @@ self-hosted: one small container, your own video files, no cloud account.
   and says "You have seen all of these."
 * Videos play in the browser, resume where they were left off, and offer a big
   **Next** button at the end.
-* A text-size switch (A A **A**) in the header makes everything bigger.
+* A text-size switch (A A **A**) in the header makes everything bigger, and an **Auto / Light / Dark**
+  switch changes the colors. **Auto** (the starting point) follows the device's own light or dark setting;
+  picking Light or Dark is remembered on that device until someone picks Auto again.
 * Optionally, each person can be given a **daily amount** of new video (say 30 minutes), so they only see
   that much at a time, and a **choice of stories**, so they only see the ones meant for them.
 
@@ -72,8 +74,9 @@ Mount one folder at `/videos`. **Each top-level folder is one story.**
   name**, e.g. `Apple Pie.mp4` and `Apple Pie.jpg`. It is shown beside the video in the list, in the
   *Already seen* list, and behind the Play button on the video page. If both `.jpg` and `.png` exist the
   `.jpg` is used. A video with no picture still works, it just shows text only. New or changed pictures are
-  picked up at the next check (the Manage page shows how many videos have one). Any size works, but
-  about 640 pixels wide, in 16:9 shape, loads fastest on a tablet.
+  picked up at the next check (the Manage page shows how many videos have one). Pictures of any shape
+  work, wide, square or tall: each is shown whole (scaled to fit, never cropped), and a tall one is
+  simply shown taller. Pictures about 640 pixels wide load fastest on a tablet.
 * The app **never changes** your videos. Mount the folder read-only (`:ro`).
 * The folder is re-checked every 5 minutes (and when you press *Check for new videos now* on the
   Manage page). Metadata is cached in a small SQLite database, and a file is only re-read if it changes.
