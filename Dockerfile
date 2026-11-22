@@ -1,6 +1,6 @@
 # The base image is pinned by digest so builds are repeatable; Dependabot opens a pull request
 # whenever a newer one is published.
-FROM python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+FROM python:3.15-alpine@sha256:0f9552bb28711333da16915ec146f5e6bb44a7fdac9ced15dc17c2e0206346dd
 
 LABEL org.opencontainers.image.title="Stories and Videos" \
       org.opencontainers.image.description="A simple, large-print video library for family stories." \
